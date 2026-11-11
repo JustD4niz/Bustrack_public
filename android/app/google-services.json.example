@@ -1,0 +1,65 @@
+{
+  "_comentario": [
+    "PLANTILLA de android/app/google-services.json.",
+    "Copia este archivo a android/app/google-services.json y reemplaza cada",
+    "marcador con los datos de TU proyecto de Firebase. La forma correcta y",
+    "menos propensa a errores es NO escribirlo a mano:",
+    "",
+    "  flutterfire configure --project=tu-proyecto",
+    "",
+    "o descargarlo de Firebase Console -> Configuración del proyecto ->",
+    "Tus apps -> app Android com.practica.bus_track -> google-services.json.",
+    "",
+    "google-services.json NO se sube al repositorio (está en .gitignore):",
+    "lleva la apiKey del proyecto y la huella SHA-1 registrada. Si cambias de",
+    "keystore tienes que añadir la SHA-1 nueva en Firebase y volver a",
+    "descargar este archivo, o Google Sign-In falla en el APK.",
+    "",
+    "Esta plantilla NO se parsea: es solo documentación."
+  ],
+  "project_info": {
+    "project_number": "000000000000",
+    "project_id": "tu-proyecto-firebase",
+    "storage_bucket": "tu-proyecto-firebase.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "android_client_info": {
+          "package_name": "com.practica.bus_track"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "000000000000-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.practica.bus_track",
+            "certificate_hash": "HUELLA_SHA1_DE_TU_KEYSTORE_SIN_DOS_PUNTOS"
+          }
+        },
+        {
+          "client_id": "000000000000-yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "TU_API_KEY_DE_FIREBASE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "000000000000-yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

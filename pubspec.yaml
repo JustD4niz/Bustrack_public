@@ -1,0 +1,68 @@
+name: bus_track_app
+description: "BusTrack: seguimiento en tiempo real del bus escolar (Flutter + Firebase)."
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.0
+  cloud_firestore: ^5.4.0
+  # 7.x es la primera versión cuyo `authenticate()` abre una Chrome Custom Tab
+  # en Android (en iOS, ASWebAuthenticationSession) en vez del selector nativo
+  # de Google, que en muchos ROMs sale blanco o negro. En web la v7 exige no
+  # llamar `initialize()`, así que ahí seguimos con `signInWithPopup` de
+  # firebase_auth (ver lib/services/google_auth.dart).
+  google_sign_in: ^7.1.1
+  permission_handler: ^11.3.1
+  # Mapa de Google y GPS del conductor (ver lib/widgets/bus_map.dart y
+  # lib/services/bus_location_service.dart).
+  google_maps_flutter: ^2.12.0
+  geolocator: ^14.0.0
+  file_picker: ^9.0.0
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.3.3
+  simple_gradient_text: ^1.2.3
+  image: ^4.10.1
+  # Cliente HTTP para el trazado de la ruta por calles (ver
+  # lib/services/route_service.dart, que consulta el servicio público OSRM).
+  http: ^1.6.0
+  # Para abrir el marcador desde "Contactar Conductor".
+  url_launcher: ^6.3.0
+  shared_preferences: ^2.5.6
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^7.5.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  # Genera los iconos de Android, iOS y web desde assets/icon/app_icon.png.
+  flutter_launcher_icons: ^0.14.4
+
+# Configuración de `dart run flutter_launcher_icons`.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: "assets/icon/app_icon.png"
+    background_color: "#F6EFE7"
+    theme_color: "#F6EFE7"
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/videos/
+    - assets/audios/
+    - assets/rive_animations/
+    - assets/pdfs/
+    - assets/jsons/

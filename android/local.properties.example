@@ -1,0 +1,27 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# PLANTILLA de android/local.properties
+#
+# Copia este archivo a `android/local.properties` (mismo directorio, sin el
+# sufijo .example) y ajusta las rutas a tu máquina.
+#
+# `android/local.properties` NO se sube al repositorio: contiene rutas
+# absolutas de tu PC y, en este proyecto, la clave de Google Maps.
+#
+# Flutter escribe `sdk.dir`, `flutter.sdk` y las líneas `flutter.*` solo; la de
+# MAPS_API_KEY la pones tú a mano y no se borra al recompilar.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Ruta del Android SDK (Android Studio → Settings → Languages & Frameworks →
+# Android SDK). En Windows las barras invertidas van duplicadas.
+sdk.dir=C:\\Users\\TU_USUARIO\\AppData\\Local\\Android\\sdk
+
+# Ruta del SDK de Flutter (donde esté instalado en tu equipo).
+flutter.sdk=C:\\src\\flutter
+
+# Clave del SDK de Google Maps para Android.
+# Se inyecta en AndroidManifest.xml vía ${mapsApiKey} (ver build.gradle.kts).
+# Restríngela en Google Cloud a:
+#   - el paquete com.practica.bus_track
+#   - tu huella SHA-1 de firma
+# Sin esta línea la app compila, pero el mapa aparece en gris.
+MAPS_API_KEY=TU_CLAVE_DE_GOOGLE_MAPS

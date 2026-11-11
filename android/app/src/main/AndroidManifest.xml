@@ -1,0 +1,103 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Sin esto, `FirebaseAuth` y Firestore no funcionan en una compilación de
+         release: Flutter solo declara INTERNET en los manifiestos debug y
+         profile, así que una app firmada y publicada se quedaría sin red. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Acceso a las fotos que el conductor adjunta en su registro.
+
+         Desde Android 13 (API 33) `READ_EXTERNAL_STORAGE` ya no concede nada:
+         el permiso se dividió en `READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO`.
+         Como `targetSdk` es 36, el de abajo solo sirve en teléfonos antiguos, y
+         por eso lleva `maxSdkVersion="32"`; a partir de ahí manda el primero.
+
+         La cámara se usa de dos formas distintas y por eso CAMERA sí se
+         declara ahora:
+           - El selector de archivos del registro abre la cámara de forma
+             **delegada** (la app de cámara toma la foto y la devuelve); eso
+             funciona sin permiso.
+           - El escáner de QR (`mobile_scanner`) abre la cámara **desde la
+             app**, y para eso Android exige `CAMERA`. Sin declararlo, el
+             sistema niega la petición sin mostrar diálogo y el escáner solo
+             muestra una pantalla negra.
+         `uses-feature required="false"` evita que Play Store excluya tabletas
+         o equipos sin cámara: la app sigue sirviendo para escribir el código a
+         mano. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
+
+    <!-- GPS del conductor. FOREGROUND_SERVICE_LOCATION (Android 14+) permite
+         seguir enviando la posición con la pantalla bloqueada. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
+
+    <!-- Android 13+ (API 33): sin esto la notificación del servicio en primer
+         plano no se muestra. El servicio de ubicación de geolocator igual
+         arranca, pero en varios fabricantes una notificación invisible deja el
+         servicio en un estado que el sistema termina matando, y el conductor
+         parece "congelado" en el punto donde inició la ruta. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32"/>
+
+    <application
+        android:label="BusTrack"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <!-- Specifies an Android theme to apply to this Activity as soon as
+                 the Android process has started. This theme is visible to the user
+                 while the Flutter UI initializes. After that, this theme continues
+                 to determine the Window background behind the Flutter UI. -->
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <!-- API key de Google Maps (Maps SDK for Android). El valor lo inyecta
+             build.gradle.kts desde android/local.properties (MAPS_API_KEY), que
+             no se versiona. Restríngela al paquete y a tu huella SHA-1. -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${mapsApiKey}"/>
+        <!-- Don't delete the meta-data below.
+             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+    <!-- Required to query activities that can process text, see:
+         https://developer.android.com/training/package-visibility and
+         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
+
+         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Android 11+ exige declarar el esquema para poder abrir el
+             marcador con `tel:` desde "Contactar Conductor". -->
+        <intent>
+            <action android:name="android.intent.action.DIAL"/>
+            <data android:scheme="tel"/>
+        </intent>
+    </queries>
+</manifest>

@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "BusTrack (Edge, web 1309)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "edge",
+      "flutterMode": "debug",
+      "args": ["--web-port=1309"]
+    },
+    {
+      "name": "BusTrack (Windows desktop)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "windows",
+      "flutterMode": "debug"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fondo del splash: el mismo crema de `AppColors.background`
+         (lib/main.dart). Evita el destello blanco entre el icono del sistema y
+         la primera pantalla de Flutter. -->
+    <color name="splash_background">#FFF6DC</color>
+    <!-- Fondo del icono adaptativo: el mismo crema del arte original de
+         assets/icon/app_icon.png, para que el recorte del lanzador no muestre
+         un borde de otro color. -->
+    <color name="ic_launcher_background">#F6EFE7</color>
+</resources>

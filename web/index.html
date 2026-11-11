@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="BusTrack: seguimiento en tiempo real del bus escolar.">
+
+  <!-- Client ID de Google (OAuth 2.0 Web) de TU proyecto de Firebase.
+       En web, el SDK de Firebase lo lee de aquí al hacer signInWithPopup.
+       En nativo, google_auth.dart lo replica como serverClientId: en Android
+       Google exige que el idToken se emita contra el cliente WEB del proyecto.
+       Si cambias uno, cambia el otro.
+       En el repositorio público es un marcador: pon el tuyo, o pasa
+       --dart-define=GOOGLE_WEB_CLIENT_ID=... en nativo. -->
+  <meta name="google-signin-client_id" content="TU_CLIENT_ID_WEB.apps.googleusercontent.com">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="BusTrack">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>BusTrack</title>
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Google Identity Services. google_sign_in_web 0.12.4+4 también lo
+       inyecta solo (loader.loadWebSdk()); tenerlo aquí evita el round-trip
+       extra y cubre el primer toque al botón. -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

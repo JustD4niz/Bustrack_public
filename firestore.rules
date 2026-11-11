@@ -1,0 +1,244 @@
+rules_version = '2';
+
+// El "administrador" es el mismo correo que `AdminService.adminEmail`
+// (lib/admin_service.dart). Para los usuarios de correo/contraseña el token
+// trae el correo en `request.auth.token.email`, así que no hace falta un
+// custom claim ni un documento de perfil en Firestore.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function esAdmin() {
+      return request.auth != null
+             && request.auth.token.email == 'danieljerez810@gmail.com';
+    }
+
+    function esPropio(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // Cada persona lee y escribe únicamente su propia ficha; el admin lee
+    // todas (es lo que necesita la cola de conductores pendientes) y es el
+    // único que aprueba o rechaza.
+    match /usuarios/{uid} {
+      allow read: if esAdmin() || esPropio(uid);
+
+      // Alta en el registro: cada uno crea la suya, con un rol de los dos
+      // permitidos. `isApproved` puede venir o no, pero nunca en `true`: solo
+      // el admin lo escribe, y eso es lo que impide que alguien se apruebe a
+      // sí mismo y aparezca en la cola como ya aprobado.
+      allow create: if esPropio(uid)
+                    && request.resource.data.role in ['parent', 'driver']
+                    && request.resource.data.get('isApproved', false) == false;
+
+      // Un usuario puede corregir su propia ficha, pero **no** cambiar su rol ni
+      // aprobarse a sí mismo: las dos cosas se comparan contra el valor que ya
+      // está en la base. Sin este bloque el `.set()` de los formularios de
+      // registro fallaba con `permission-denied` en cuanto el documento ya
+      // existía, porque Firestore evalúa un `set` sobre un documento existente
+      // como `update`, y `update` era solo del admin. El síntoma era que el
+      // padre no podía guardar su perfil y el conductor no podía corregir una
+      // solicitud rechazada.
+      //
+      // El que ya fue aprobado (`isApproved == true`) no puede editar su ficha:
+      // a partir de ahí solo el admin.
+      allow update: if esAdmin()
+                    || (esPropio(uid)
+                        && request.resource.data.role == resource.data.role
+                        && request.resource.data.get('isApproved', false) == false);
+
+      allow delete: if esAdmin();
+    }
+
+    // Adjuntos de las solicitudes: los bytes de cada foto o documento viven en
+    // `solicitudes/{uid}/adjuntos/{slug}` porque Firestore admite 1 MiB por
+    // documento y una foto de celular sin comprimir no cabe en la ficha.
+    //
+    // El conductor escribe los suyos y nadie más; el admin es el único que los
+    // lee, que es lo que necesita para aprobar. Los padres no entran aquí.
+    //
+    // `adjuntos` va literal en el patrón: es el nombre de la subcolección, y
+    // un `{wildcard}` solo captura *un* segmento, no dos.
+    match /solicitudes/{uid}/adjuntos/{slug} {
+      allow read: if esAdmin();
+      allow create, update: if esPropio(uid)
+                            && request.resource.data.keys().hasAll(['name', 'data'])
+                            && request.resource.data.data.size() < 1024 * 1024;
+      allow delete: if esAdmin();
+    }
+
+    // Seguimiento del bus: la placa del padre se resuelve por id de documento
+    // en parent_home_screen.dart, así que todos los usuarios autenticados
+    // pueden leer.
+    //
+    // Escribe el conductor, pero solo su propio bus. Abriarlo a cualquier
+    // usuario autenticado dejaría que un conductor se apropiara del bus de otro
+    // escribiendo `driverUid` con su uid en la placa ajena, y el padre vería la
+    // ruta equivocada. Por eso el update exige que `driverUid` sea el mismo
+    // antes y después: nada de reasignar el bus hacia otro, ni de quitárselo.
+    match /buses/{placa} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.driverUid == request.auth.uid;
+      allow update: if esAdmin()
+                    || (request.auth != null
+                        && resource.data.driverUid == request.auth.uid
+                        && request.resource.data.driverUid == request.auth.uid);
+      allow delete: if esAdmin();
+    }
+
+    // Paradas de la ruta de cada conductor, en `rutas/{uid}` (id de usuario, no
+    // placa: un conductor con dos placas tiene dos rutas). El id es el uid del
+    // conductor, así que `esPropio(uid)` ya dice quién puede escribir.
+    //
+    // Lo leen todos los usuarios autenticados porque el padre de un niño
+    // necesita ver la ruta del conductor que lleva a su hijo
+    // (parent_home_screen.dart). Son nombres de colegio y direcciones de
+    // paradas, no es información sensible.
+    match /rutas/{uid} {
+      allow read: if request.auth != null;
+      allow write: if esAdmin() || esPropio(uid);
+    }
+
+    // Historial de rutas ya cerradas, en `rutas/{uid}/historial/{registro}`.
+    // Las reglas **no** se heredan al subcoleccionar: sin este bloque el
+    // archivo de la ruta fallaba con `permission-denied` y el padre se quedaba
+    // sin recorrido que mostrar. Lo lee cualquier autenticado (igual que
+    // `rutas/{uid}`), lo crea solo el dueño del uid y no se edita ni se borra
+    // desde la app.
+    match /rutas/{uid}/historial/{registro} {
+      allow read: if request.auth != null;
+      allow create: if esPropio(uid) || esAdmin();
+      allow update, delete: if esAdmin();
+    }
+
+    // Hijos del padre. Un documento por estudiante, para que un padre pueda
+    // tener varios y cada uno vaya en un bus distinto.
+    //
+    // Un padre solo crea y lee los suyos (`parentUid`). El bus no se puede
+    // escribir "a mano": si el documento trae `busPlate`, tiene que venir con
+    // un `codigo` activo de `codigos` que apunte a esa misma placa. Así nadie
+    // se vincula al bus de otro adivinando la placa, que era justo el agujero
+    // del formulario viejo. Quitar el vínculo (borrar `busPlate`) se permite.
+    function codigoValido(codigo, placa) {
+      return existeCodigo(codigo)
+             && get(/databases/$(database)/documents/codigos/$(codigo)).data.get('activo', false) == true
+             && get(/databases/$(database)/documents/codigos/$(codigo)).data.get('busPlate', '') == placa;
+    }
+
+    function existeCodigo(codigo) {
+      return exists(/databases/$(database)/documents/codigos/$(codigo));
+    }
+
+    function vinculacionValida() {
+      return !request.resource.data.keys().hasAny(['busPlate'])
+             || (request.resource.data.keys().hasAny(['codigo'])
+                 && codigoValido(
+                      request.resource.data.codigo,
+                      request.resource.data.busPlate));
+    }
+
+    function esMiHijo(studentId) {
+      return studentId == request.auth.uid
+             || (exists(/databases/$(database)/documents/estudiantes/$(studentId))
+                 && get(/databases/$(database)/documents/estudiantes/$(studentId)).data.get('parentUid', '') == request.auth.uid);
+    }
+
+    match /estudiantes/{studentId} {
+      // Lectura directa por campo (sin `get(...)`, que en una consulta no se
+      // puede razonar): el padre lista con
+      // `where('parentUid', '==', suUid)`, y así Firestore puede demostrar que
+      // todos los documentos de la consulta cumplen la regla. Un `get` con
+      // valor por defecto ahí denegaría la lista entera.
+      //
+      // El conductor lee con `where('driverUid', '==', suUid)` para la pestaña
+      // "Estudiantes": necesita ver a los hijos de su bus **aunque todavía no
+      // hayan marcado punto de recogida** (antes solo veía `recogida`). Es un
+      // campo del propio documento, así que la consulta se puede demostrar sin
+      // índice compuesto.
+      allow read: if esAdmin()
+                    || (request.auth != null
+                        && (resource.data.parentUid == request.auth.uid
+                            || resource.data.driverUid == request.auth.uid));
+
+      allow create: if request.auth != null
+                    && request.resource.data.get('parentUid', '') == request.auth.uid
+                    && vinculacionValida();
+
+      allow update: if esAdmin()
+                    || (request.auth != null
+                        && resource.data.get('parentUid', '') == request.auth.uid
+                        && request.resource.data.get('parentUid', '') == request.auth.uid
+                        && (!request.resource.data.diff(resource.data)
+                              .affectedKeys().hasAny(['busPlate'])
+                            || vinculacionValida()));
+
+      allow delete: if esAdmin()
+                    || (request.auth != null
+                        && resource.data.get('parentUid', '') == request.auth.uid);
+    }
+
+    // Código de vinculación que comparte el conductor (`codigos/{codigo}`). El
+    // padre lo lee para resolver a qué bus corresponde; el conductor solo crea
+    // y desactiva los de su propia placa.
+    //
+    // El `busPlate` del código se compara contra la ficha del conductor, no
+    // contra el cuerpo de la petición: sin eso, cualquiera podría crear un
+    // código que apunte a una placa ajena y repartirlo.
+    match /codigos/{codigo} {
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+                    && request.resource.data.get('driverUid', '') == request.auth.uid
+                    && request.resource.data.get('activo', false) == true
+                    && request.resource.data.get('busPlate', '') ==
+                         get(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+                           .data.get('busPlate', '');
+
+      allow update: if esAdmin()
+                    || (request.auth != null
+                        && resource.data.get('driverUid', '') == request.auth.uid
+                        && request.resource.data.get('driverUid', '') == request.auth.uid
+                        && request.resource.data.get('busPlate', '') == resource.data.get('busPlate', ''));
+
+      allow delete: if esAdmin();
+    }
+
+    // Punto de recogida que el padre marca en el mapa para su hijo, en
+    // `recogida/{studentId}` (el id del hijo; para el hijo legado, el uid del
+    // padre). Guarda nombre del hijo, nombre y teléfono del padre y las
+    // coordenadas de la casa: por eso **no** lo puede leer cualquier cuenta
+    // autenticada.
+    //
+    // Solo lo leen el padre dueño (`parentUid`), el conductor del bus
+    // (`driverUid`, que el padre copia al guardar el punto) y el admin. Las dos
+    // comparaciones son campos del propio documento, así que las consultas
+    // `where('parentUid'|'driverUid', '==', uid)` se pueden demostrar sin
+    // índice compuesto. El conductor publica una copia anónima
+    // (`id`, `lat`, `lng`) en `buses/{placa}.paradasPublicas` para que el padre
+    // pueda dibujar las paradas de otros hijos sin ver sus datos.
+    //
+    // El `parentUid` del documento tiene que ser el escritor y el `studentId`
+    // tiene que ser un hijo suyo (o su propio uid, que es el hijo legado). Sin
+    // esa comprobación, un padre podría escribir el punto de recogida de otro
+    // con solo conocer el id del documento.
+    //
+    // La llegada ("ya estoy en el punto") no la escribe el conductor aquí: la
+    // marca en `rutas/{su uid}.estadoParadas` para no darle permiso de escritura
+    // sobre documentos de otros usuarios.
+    match /recogida/{studentId} {
+      allow read: if esAdmin()
+                    || (request.auth != null
+                        && (resource.data.parentUid == request.auth.uid
+                            || resource.data.driverUid == request.auth.uid));
+
+      allow create, update: if request.auth != null
+                            && request.resource.data.get('parentUid', '') == request.auth.uid
+                            && esMiHijo(studentId);
+
+      allow delete: if esAdmin()
+                    || (request.auth != null
+                        && (resource.data.get('parentUid', '') == request.auth.uid
+                            || esMiHijo(studentId)));
+    }
+  }
+}

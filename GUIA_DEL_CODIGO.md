@@ -18,9 +18,9 @@ Convenciones:
 
 | Si preguntan por… | Abrir |
 |---|---|
-| El mapa que ve el **padre** | `lib/widgets/parent_map_view.dart:874` (`GoogleMap`) |
+| El mapa que ve el **padre** | `lib/widgets/parent_map_view.dart:877` (`GoogleMap`) |
 | El mapa que ve el **conductor** | `lib/screens/driver_ruta_screen.dart:1501` (`GoogleMap`) |
-| La pantalla del mapa del padre completa | `lib/widgets/parent_map_view.dart:815` (`build`) |
+| La pantalla del mapa del padre completa | `lib/widgets/parent_map_view.dart:818` (`build`) |
 | El panel del padre (4 pestañas) | `lib/parent_home_screen.dart:86` (`build`) y `:143` (`IndexedStack`) |
 | El panel del conductor (4 pestañas) | `lib/screens/driver_ruta_screen.dart:1162` (`build`) |
 | El arranque de la app / "sesión" | `lib/services/session_router.dart:97` (`PantallaDeArranque`) |
@@ -252,7 +252,7 @@ Es la pantalla a la que cae el conductor no aprobado, tanto al iniciar sesión c
 
 ## 5. El mapa del padre (la pregunta más probable)
 
-### `lib/widgets/parent_map_view.dart` (1347 líneas)
+### `lib/widgets/parent_map_view.dart` (1350 líneas)
 
 | Línea | Qué hace |
 |---|---|
@@ -282,19 +282,19 @@ Es la pantalla a la que cae el conductor no aprobado, tanto al iniciar sesión c
 | `:761` | **`_rutaInteres()`**: qué tramo dibuja el padre. |
 | `:766` | Antes de que su hijo suba: `bus → mi punto`. |
 | `:773` | Después: `bus → siguiente parada pendiente más cercana`, y solo al final al colegio. |
-| `:777` | `_calcularRuta()`: llama a `RouteService`. |
-| `:815` | **`build`**: `Scaffold` con el mapa y el panel inferior. |
-| `:873` | `_buildMapa()`. |
-| `:874` | **`GoogleMap(...)`**: aquí está el mapa que ve el padre. |
-| `:891` | `polylines`: una sola `Polyline` con id `ruta_padre`. |
-| `:913` | **`_buildMarcadores()`**: bus + paradas + mi punto + colegio. |
-| `:938` | Recorre `_recogidas`: verde si ya subió, azul si es mía, gris si es de otro. |
-| `:1011` | `_buildChipSenal()`: "señal hace X s". |
-| `:1088` | **`_buildPanelInferior()`**: la tarjeta blanca bajo el mapa. |
-| `:1113` | `_buildSinPunto()`: invita a marcar el punto. |
-| `:1148` | `_buildConPunto()`: estado del bus, distancia, "aún tiene N paradas", botón de confirmar. |
-| `:1316` | **`_siguienteParada()`**: la parada pendiente más cercana. Es la que decide el texto y la que reutiliza `_rutaInteres`. |
-| `:1335` | `_AvisoMapa` (estado vacío). |
+| `:777` | `_calcularRuta()`: llama a `RouteService`. Si OSRM falla, conserva la última ruta buena (sin ruta previa, no dibuja línea). |
+| `:818` | **`build`**: `Scaffold` con el mapa y el panel inferior. |
+| `:876` | `_buildMapa()`. |
+| `:877` | **`GoogleMap(...)`**: aquí está el mapa que ve el padre. |
+| `:894` | `polylines`: una sola `Polyline` con id `ruta_padre`. |
+| `:916` | **`_buildMarcadores()`**: bus + paradas + mi punto + colegio. |
+| `:941` | Recorre `_recogidas`: verde si ya subió, azul si es mía, gris si es de otro. |
+| `:1014` | `_buildChipSenal()`: "señal hace X s". |
+| `:1091` | **`_buildPanelInferior()`**: la tarjeta blanca bajo el mapa. |
+| `:1116` | `_buildSinPunto()`: invita a marcar el punto. |
+| `:1150` | `_buildConPunto()`: estado del bus, distancia, "aún tiene N paradas", botón de confirmar. |
+| `:1319` | **`_siguienteParada()`**: la parada pendiente más cercana. Es la que decide el texto y la que reutiliza `_rutaInteres`. |
+| `:1338` | `_AvisoMapa` (estado vacío). |
 
 **La regla que hay que explicar bien:** la línea del padre y la del conductor **tienen que dar el mismo trayecto**. Antes divergían: cuando el hijo del padre subía, la línea del padre saltaba al colegio mientras el bus seguía con los puntos de otros, y el texto decía "aún tiene N paradas pendientes". Hoy las dos calculan "la más cercana" con las mismas paradas y el mismo `estadoParadas`:
 
@@ -776,16 +776,16 @@ Nada importa esto. No asumas que se renderiza ni lo edites esperando un efecto v
 ## 20. Preguntas típicas y respuesta corta
 
 **"¿Dónde está el mapa que ve el padre?"**
-`lib/widgets/parent_map_view.dart:874`, dentro de `_buildMapa()` (`:873`), que se pinta desde `ParentMapView.build` (`:815`). El panel lo inserta en `lib/parent_home_screen.dart:285`.
+`lib/widgets/parent_map_view.dart:877`, dentro de `_buildMapa()` (`:876`), que se pinta desde `ParentMapView.build` (`:818`). El panel lo inserta en `lib/parent_home_screen.dart:285`.
 
 **"¿Y el del conductor?"**
 `lib/screens/driver_ruta_screen.dart:1501`, dentro de `_buildMapa()` (`:1494`), en la pestaña "Ruta" (`:1218`).
 
 **"¿Cómo se dibuja la línea de la ruta?"**
-Se pide a OSRM (`lib/services/route_service.dart:52`), se guardan los puntos y se pinta una `Polyline`: padre en `parent_map_view.dart:891`, conductor en `driver_ruta_screen.dart:1701`.
+Se pide a OSRM (`lib/services/route_service.dart:52`), se guardan los puntos y se pinta una `Polyline`: padre en `parent_map_view.dart:894`, conductor en `driver_ruta_screen.dart:1701`. Si OSRM no responde, el padre conserva la última ruta buena y el conductor cae a una recta de guía.
 
 **"¿Cómo sabe el padre dónde está el bus?"**
-El conductor escribe `buses/{placa}` con el GPS (`bus_location_service.dart:58`); el padre escucha ese documento (`parent_map_view.dart:253`) y coloca el marcador (`:913`).
+El conductor escribe `buses/{placa}` con el GPS (`bus_location_service.dart:58`); el padre escucha ese documento (`parent_map_view.dart:253`) y coloca el marcador (`:916`).
 
 **"¿Cómo se marca que el hijo subió al bus?"**
 El conductor pulsa "Ya recogí" → `_marcarSubio` (`driver_ruta_screen.dart:871`) escribe `subioEn`. El padre lo lee de `rutas/{driverUid}.estadoParadas` (`parent_map_view.dart:384`) y actualiza `_subidos`.

@@ -788,7 +788,10 @@ class _ParentMapViewState extends State<ParentMapView> {
     _calculando = false;
     if (!mounted) return;
     setState(() {
-      _rutaPuntos = calculada?.puntos ?? puntos;
+      // Sin OSRM (sin red o timeout) se conserva la última ruta buena; si
+      // todavía no hay ninguna, no se dibuja línea. Antes se caía a una recta
+      // entre bus y destino, que no es una carretera y parecía un error.
+      _rutaPuntos = calculada?.puntos ?? _rutaPuntos;
     });
   }
 

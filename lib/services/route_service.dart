@@ -30,8 +30,8 @@ class RutaCalculada {
   }
 }
 
-/// Calcula el camino entre puntos con OSRM (OpenStreetMap), el motor de rutas
-/// gratuito del proyecto.
+/// Calcula el camino entre puntos con OSRM (OpenStreetMap), el mismo proveedor
+/// gratuito que ya se usa para el buscador de lugares.
 ///
 /// Se eligió OSRM sobre Google Directions a propósito: Directions exige activar
 /// facturación en Google Cloud, y este proyecto ya decidió no pagar APIs de
@@ -44,9 +44,8 @@ class RouteService {
   static const String _base =
       'https://router.project-osrm.org/route/v1/driving/';
 
-  /// OSRM es un servicio público ajeno; igual que con cualquier API pública, un
-  /// `User-Agent` de navegador evita que la petición se rechace por venir de
-  /// `dart:io`.
+  /// OSRM es un servicio público ajeno; igual que con Photon, un `User-Agent`
+  /// de navegador evita que la petición se rechace por venir de `dart:io`.
   static const String _userAgent =
       'Mozilla/5.0 (compatible; BusTrackApp/1.0; seguimiento escolar)';
 
@@ -67,8 +66,8 @@ class RouteService {
       if (respuesta.statusCode != 200) return null;
       return parsear(respuesta.body);
     } catch (e) {
-      // Sin red o servidor caído: la pantalla muestra el mapa sin la línea en
-      // vez de romperse.
+      // Sin red o servidor caído se devuelve `null`: el padre conserva la
+      // última ruta buena y el conductor dibuja una recta como guía.
       debugPrint('RouteService: no se pudo calcular la ruta: $e');
       return null;
     }

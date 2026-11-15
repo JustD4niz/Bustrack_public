@@ -129,6 +129,11 @@ class AcercaDeScreen extends StatelessWidget {
                               title: 'OpenStreetMap (OSRM)',
                               subtitle: 'Trazado de la ruta por calles, gratis y sin clave',
                             ),
+                            _FilaServicio(
+                              icon: Icons.search_rounded,
+                              title: 'OpenStreetMap (Photon)',
+                              subtitle: 'Buscador gratuito de colegios y lugares',
+                            ),
                           ],
                         ),
                         const SizedBox(height: 20),

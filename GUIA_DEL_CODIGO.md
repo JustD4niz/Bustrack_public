@@ -18,9 +18,9 @@ Convenciones:
 
 | Si preguntan por… | Abrir |
 |---|---|
-| El mapa que ve el **padre** | `lib/widgets/parent_map_view.dart:877` (`GoogleMap`) |
-| El mapa que ve el **conductor** | `lib/screens/driver_ruta_screen.dart:1501` (`GoogleMap`) |
-| La pantalla del mapa del padre completa | `lib/widgets/parent_map_view.dart:818` (`build`) |
+| El mapa que ve el **padre** | `lib/widgets/parent_map_view.dart:923` (`GoogleMap`) |
+| El mapa que ve el **conductor** | `lib/screens/driver_ruta_screen.dart:1505` (`GoogleMap`) |
+| La pantalla del mapa del padre completa | `lib/widgets/parent_map_view.dart:856` (`build`) |
 | El panel del padre (4 pestañas) | `lib/parent_home_screen.dart:86` (`build`) y `:143` (`IndexedStack`) |
 | El panel del conductor (4 pestañas) | `lib/screens/driver_ruta_screen.dart:1162` (`build`) |
 | El arranque de la app / "sesión" | `lib/services/session_router.dart:97` (`PantallaDeArranque`) |
@@ -252,7 +252,7 @@ Es la pantalla a la que cae el conductor no aprobado, tanto al iniciar sesión c
 
 ## 5. El mapa del padre (la pregunta más probable)
 
-### `lib/widgets/parent_map_view.dart` (1350 líneas)
+### `lib/widgets/parent_map_view.dart` (1396 líneas)
 
 | Línea | Qué hace |
 |---|---|
@@ -264,42 +264,45 @@ Es la pantalla a la que cae el conductor no aprobado, tanto al iniciar sesión c
 | `:112` | `_miPunto`: el punto de recogida de **este** hijo. |
 | `:120` | `_subidos`: ids de estudiantes ya recogidos. |
 | `:134` | `_autoConfirmado`. |
-| `:248` | `_cargarIconoBus()`: convierte el PNG del bus en un `BitmapDescriptor`. |
-| `:253` | `_suscribirBus()`: escucha `buses/{placa}`. |
-| `:262` | `_suscribirMiPunto()`: escucha `recogida/{studentId}` **aparte** de la lista del bus, para ver el marcador incluso antes de que el conductor inicie la ruta. |
-| `:291` | `_alActualizarBus(...)`: lee posición, `enMovimiento`, `paradasPublicas`, `driverUid`. |
-| `:384` | `_alActualizarRuta(...)`: lee `rutas/{driverUid}` → `destino`, `estadoParadas` (`llegoEn` / `subioEn`) y el legado `recogidos`. |
-| `:460` | `_leerParadasPublicas(...)`: convierte `buses/{placa}.paradasPublicas` (`{id, lat, lng}`) en puntos. |
-| `:487` | `_quizasSellarDriverUid(...)`: copia el `driverUid` del bus a `recogida/{studentId}`. Es la clave que las reglas comparan para que el conductor pueda leer mi punto. |
-| `:510` | `_elegirMiPunto()`: abre `MapPickerScreen`. |
-| `:571` | `_eliminarMiPunto()`. |
-| `:628` | `_avisarLlegada()`: SnackBar "¡El bus llegó a tu paradero!" con acción "Confirmar" y 10 s de duración. |
-| `:651` | `_quizasAutoConfirmar()`: si pasaron 10 s sin respuesta, confirma solo. |
-| `:664` | `_confirmarLlegada()`: escribe `recogida/{studentId}.avisoVistoEn`. |
-| `:702` | `_rutaActiva => _bus['enMovimiento'] == true`. Es el único dato que decide si el mapa está "en vivo". |
-| `:704` | `_posicionBus()` / `:715` `_ultimaPosicionBus()`. |
-| `:727` | `_programarCalculoRuta(...)`: debounce antes de pedir la ruta a OSRM. |
-| `:761` | **`_rutaInteres()`**: qué tramo dibuja el padre. |
-| `:766` | Antes de que su hijo suba: `bus → mi punto`. |
-| `:773` | Después: `bus → siguiente parada pendiente más cercana`, y solo al final al colegio. |
-| `:777` | `_calcularRuta()`: llama a `RouteService`. Si OSRM falla, conserva la última ruta buena (sin ruta previa, no dibuja línea). |
-| `:818` | **`build`**: `Scaffold` con el mapa y el panel inferior. |
-| `:876` | `_buildMapa()`. |
-| `:877` | **`GoogleMap(...)`**: aquí está el mapa que ve el padre. |
-| `:894` | `polylines`: una sola `Polyline` con id `ruta_padre`. |
-| `:916` | **`_buildMarcadores()`**: bus + paradas + mi punto + colegio. |
-| `:941` | Recorre `_recogidas`: verde si ya subió, azul si es mía, gris si es de otro. |
-| `:1014` | `_buildChipSenal()`: "señal hace X s". |
-| `:1091` | **`_buildPanelInferior()`**: la tarjeta blanca bajo el mapa. |
-| `:1116` | `_buildSinPunto()`: invita a marcar el punto. |
-| `:1150` | `_buildConPunto()`: estado del bus, distancia, "aún tiene N paradas", botón de confirmar. |
-| `:1319` | **`_siguienteParada()`**: la parada pendiente más cercana. Es la que decide el texto y la que reutiliza `_rutaInteres`. |
-| `:1338` | `_AvisoMapa` (estado vacío). |
+| `:146` | `_generacionAviso`: diferencia un aviso viejo de uno nuevo mostrado mientras se cambiaba de hijo. |
+| `:189` | `didUpdateWidget(...)`: al cambiar de hijo o placa limpia el estado, resuscribe y retira el SnackBar en post-frame; evita confirmar al hijo nuevo con una acción del anterior. |
+| `:270` | `_cargarIconoBus()`: convierte el PNG del bus en un `BitmapDescriptor`. |
+| `:275` | `_suscribirBus()`: escucha `buses/{placa}`. |
+| `:284` | `_suscribirMiPunto()`: escucha `recogida/{studentId}` **aparte** de la lista del bus, para ver el marcador incluso antes de que el conductor inicie la ruta. |
+| `:313` | `_alActualizarBus(...)`: lee posición, `enMovimiento`, `paradasPublicas`, `driverUid`. |
+| `:406` | `_alActualizarRuta(...)`: lee `rutas/{driverUid}` → `destino`, `estadoParadas` (`llegoEn` / `subioEn`) y el legado `recogidos`; no muestra avisos con más de 10 s. |
+| `:489` | `_leerParadasPublicas(...)`: convierte `buses/{placa}.paradasPublicas` (`{id, lat, lng}`) en puntos. |
+| `:516` | `_quizasSellarDriverUid(...)`: copia el `driverUid` del bus a `recogida/{studentId}`. Es la clave que las reglas comparan para que el conductor pueda leer mi punto. |
+| `:539` | `_elegirMiPunto()`: abre `MapPickerScreen`. |
+| `:600` | `_eliminarMiPunto()`. |
+| `:657` | `_avisarLlegada()`: SnackBar "¡El bus llegó a tu paradero!" captura el `studentId` del aviso, dura 10 s y no se muestra si `llegoEn` ya venció. |
+| `:685` | `_quizasAutoConfirmar()`: si pasaron 10 s sin respuesta, confirma solo. |
+| `:698` | `_confirmarLlegada([idAviso])`: escribe `recogida/{studentId}.avisoVistoEn` e ignora acciones de otro hijo. |
+| `:740` | `_rutaActiva => _bus['enMovimiento'] == true`. Es el único dato que decide si el mapa está "en vivo". |
+| `:742` | `_posicionBus()` / `:753` `_ultimaPosicionBus()`. |
+| `:765` | `_programarCalculoRuta(...)`: debounce antes de pedir la ruta a OSRM. |
+| `:799` | **`_rutaInteres()`**: qué tramo dibuja el padre. |
+| `:805` | Antes de que su hijo suba: `bus → mi punto`. |
+| `:811` | Después: `bus → siguiente parada pendiente más cercana`, y solo al final al colegio. |
+| `:815` | `_calcularRuta()`: llama a `RouteService`. Si OSRM falla, conserva la última ruta buena (sin ruta previa, no dibuja línea). |
+| `:836` | `_centrarBus()`: `animateCamera` al bus; con el panel fuera del mapa el centro cae donde se ve el marcador. |
+| `:856` | **`build`**: `Column` con el mapa en `Expanded` y el panel de recogida debajo, **no superpuesto**. Antes el panel tapaba la parte baja del trayecto y el botón de centrar (`bottom: 168`) quedaba escondido. |
+| `:922` | `_buildMapa()`. |
+| `:923` | **`GoogleMap(...)`**: aquí está el mapa que ve el padre. |
+| `:940` | `polylines`: una sola `Polyline` con id `ruta_padre`. |
+| `:962` | **`_buildMarcadores()`**: bus + paradas + mi punto + colegio. |
+| `:987` | Recorre `_recogidas`: verde si ya subió, azul si es mía, gris si es de otro. |
+| `:1060` | `_buildChipSenal()`: "señal hace X s". |
+| `:1137` | **`_buildPanelInferior()`**: la tarjeta blanca bajo el mapa. |
+| `:1162` | `_buildSinPunto()`: invita a marcar el punto. |
+| `:1196` | `_buildConPunto()`: estado del bus, distancia, "aún tiene N paradas", botón de confirmar. |
+| `:1365` | **`_siguienteParada()`**: la parada pendiente más cercana. Es la que decide el texto y la que reutiliza `_rutaInteres`. |
+| `:1384` | `_AvisoMapa` (estado vacío). |
 
 **La regla que hay que explicar bien:** la línea del padre y la del conductor **tienen que dar el mismo trayecto**. Antes divergían: cuando el hijo del padre subía, la línea del padre saltaba al colegio mientras el bus seguía con los puntos de otros, y el texto decía "aún tiene N paradas pendientes". Hoy las dos calculan "la más cercana" con las mismas paradas y el mismo `estadoParadas`:
 
 - Conductor: `lib/screens/driver_ruta_screen.dart:992` `_rutaOrdenada()`.
-- Padre: `lib/widgets/parent_map_view.dart:761` `_rutaInteres()`.
+- Padre: `lib/widgets/parent_map_view.dart:799` `_rutaInteres()`.
 
 **Datos que el padre NO puede leer:** el padre no lee `recogida` de otros hijos (esa colección tiene nombre y teléfono). Solo ve sus puntos anónimos publicados por el conductor en `buses/{placa}.paradasPublicas`.
 
@@ -345,29 +348,31 @@ Es la pantalla a la que cae el conductor no aprobado, tanto al iniciar sesión c
 | `:1105` | `_abrirCodigoBus()`: abre `DriverQrScreen`. |
 | `:1123` | `_cerrarSesion()`. |
 | `:1162` | **`build`**: `Scaffold` + `BusNavBar` + `IndexedStack` de las 4 pestañas. |
-| `:1199` | `_buildEncabezado()`. |
+| `:1199` | `_buildEncabezado()` (sin icono de QR). |
 | `:1218` | `_buildPestanaRuta()`: mapa + panel. |
 | `:1230` | `_buildPestanaRecorrido()`: `RecorridoBusView` con `driverUidRespaldo`. |
-| `:1249` | `_buildPestanaEstudiantes()`: lista fusionada. |
-| `:1333` | `_buildFilaEstudiante(...)`: nombre + botón de llamada (deshabilitado si no hay teléfono). |
-| `:1370` | `_llamarPadre(telefono)`. |
-| `:1377` | `_buildPestanaPerfil()`: solo opciones (incluye "Código del bus"). |
-| `:1484` | `_abrirMisDatos()`. |
-| `:1494` | `_buildMapa()`. |
-| `:1501` | **`GoogleMap(...)`**: el mapa del conductor. |
-| `:1521` | `polylines: _buildPolilineas()`. |
-| `:1586` | `_buildChipCoordenadas()`. |
-| `:1638` | **`_buildMarcadores()`**. |
-| `:1661` | Marcadores de paradas. |
-| `:1680` | Marcador del colegio. |
-| `:1698` | **`_buildPolilineas()`**: la ruta calculada. |
-| `:1710` | **`_buildPanelInferior()`**: panel del viaje. |
-| `:1850` | `_buildResumenPendientes()`. |
-| `:1865` | `_buildTodoRecogido()`. |
-| `:1873` | `_buildSiguienteParada(...)`: "Siguiente parada: X · a N m" y "Ya recogí a X". |
-| `:1924` | `_siguienteParada()`: la pendiente más cercana. |
+| `:1250` | `_buildPestanaEstudiantes()`: lista fusionada y botón "Compartir mi código" (QR) tanto vacía como con niños vinculados. |
+| `:1343` | `_buildFilaEstudiante(...)`: nombre + botón de llamada (deshabilitado si no hay teléfono). |
+| `:1380` | `_llamarPadre(telefono)`. |
+| `:1387` | `_buildPestanaPerfil()`: solo opciones (mis datos, contraseña, Acerca de, cerrar sesión; **sin QR**). |
+| `:1488` | `_abrirMisDatos()`. |
+| `:1498` | `_buildMapa()`. |
+| `:1505` | **`GoogleMap(...)`**: el mapa del conductor. |
+| `:1525` | `polylines: _buildPolilineas()`. |
+| `:1590` | `_buildChipCoordenadas()`. |
+| `:1642` | **`_buildMarcadores()`**. |
+| `:1665` | Marcadores de paradas. |
+| `:1685` | Marcador del colegio. |
+| `:1702` | **`_buildPolilineas()`**: la ruta calculada. |
+| `:1714` | **`_buildPanelInferior()`**: panel del viaje. |
+| `:1854` | `_buildResumenPendientes()`. |
+| `:1869` | `_buildTodoRecogido()`. |
+| `:1877` | `_buildSiguienteParada(...)`: "Siguiente parada: X · a N m" y "Ya recogí a X". |
+| `:1928` | `_siguienteParada()`: la pendiente más cercana. |
 
 **Las dos fuentes de la pestaña "Estudiantes":** `estudiantes where driverUid == uid` (el vínculo, manda) y `recogida where driverUid == uid` (aporta `parentPhone` y datos legados). Antes solo leía `recogida`, así que un hijo vinculado **sin punto de recogida era invisible** para el conductor: ni aparecía ni se podía llamar al padre. Hoy se fusionan por `studentId` y aparece "Sin punto de recogida" cuando falta el pin.
+
+**El QR vive en "Estudiantes", no en "Mi Perfil":** está en el estado vacío y en la lista con niños ya vinculados. Es donde el conductor echa de menos a un niño y necesita compartir el código, así que no hay opción "Código del bus" en el perfil ni icono suelto en el encabezado.
 
 **El QR no reemplaza la placa:** `buses/{placa}` sigue teniendo el id = placa. El código es cómo el padre *descubre* su bus sin escribirlo.
 
@@ -776,22 +781,22 @@ Nada importa esto. No asumas que se renderiza ni lo edites esperando un efecto v
 ## 20. Preguntas típicas y respuesta corta
 
 **"¿Dónde está el mapa que ve el padre?"**
-`lib/widgets/parent_map_view.dart:877`, dentro de `_buildMapa()` (`:876`), que se pinta desde `ParentMapView.build` (`:818`). El panel lo inserta en `lib/parent_home_screen.dart:285`.
+`lib/widgets/parent_map_view.dart:923`, dentro de `_buildMapa()` (`:922`), que se pinta desde `ParentMapView.build` (`:856`). El panel lo inserta en `lib/parent_home_screen.dart:285`.
 
 **"¿Y el del conductor?"**
-`lib/screens/driver_ruta_screen.dart:1501`, dentro de `_buildMapa()` (`:1494`), en la pestaña "Ruta" (`:1218`).
+`lib/screens/driver_ruta_screen.dart:1505`, dentro de `_buildMapa()` (`:1498`), en la pestaña "Ruta" (`:1218`).
 
 **"¿Cómo se dibuja la línea de la ruta?"**
-Se pide a OSRM (`lib/services/route_service.dart:52`), se guardan los puntos y se pinta una `Polyline`: padre en `parent_map_view.dart:894`, conductor en `driver_ruta_screen.dart:1701`. Si OSRM no responde, el padre conserva la última ruta buena y el conductor cae a una recta de guía.
+Se pide a OSRM (`lib/services/route_service.dart:52`), se guardan los puntos y se pinta una `Polyline`: padre en `parent_map_view.dart:940`, conductor en `driver_ruta_screen.dart:1702`. Si OSRM no responde, el padre conserva la última ruta buena y el conductor cae a una recta de guía.
 
 **"¿Cómo sabe el padre dónde está el bus?"**
-El conductor escribe `buses/{placa}` con el GPS (`bus_location_service.dart:58`); el padre escucha ese documento (`parent_map_view.dart:253`) y coloca el marcador (`:916`).
+El conductor escribe `buses/{placa}` con el GPS (`bus_location_service.dart:58`); el padre escucha ese documento (`parent_map_view.dart:275`) y coloca el marcador (`:962`).
 
 **"¿Cómo se marca que el hijo subió al bus?"**
-El conductor pulsa "Ya recogí" → `_marcarSubio` (`driver_ruta_screen.dart:871`) escribe `subioEn`. El padre lo lee de `rutas/{driverUid}.estadoParadas` (`parent_map_view.dart:384`) y actualiza `_subidos`.
+El conductor pulsa "Ya recogí" → `_marcarSubio` (`driver_ruta_screen.dart:871`) escribe `subioEn`. El padre lo lee de `rutas/{driverUid}.estadoParadas` (`parent_map_view.dart:406`) y actualiza `_subidos`.
 
 **"¿Cómo se avisa al padre de que el bus llegó?"**
-El conductor no escribe en `recogida` (no tiene permiso). Lo marca en `rutas/{uid}.estadoParadas` (`llegoEn`). El padre lo detecta (`parent_map_view.dart:444`), muestra el SnackBar (`:628`) y confirma escribiendo `recogida/{studentId}.avisoVistoEn` (`:664`). Si no responde en 10 s, se auto-confirma (`:651`).
+El conductor no escribe en `recogida` (no tiene permiso). Lo marca en `rutas/{uid}.estadoParadas` (`llegoEn`). El padre lo detecta (`parent_map_view.dart:406`), muestra el SnackBar (`:657`) y confirma escribiendo `recogida/{studentId}.avisoVistoEn` (`:698`). Si no responde en 10 s, se auto-confirma (`:685`). Al cambiar de hijo (`didUpdateWidget`, `:189`) se retira el aviso en post-frame —salvo que ya se mostrara uno nuevo, gracias a `_generacionAviso` (`:146`)— y la acción «Confirmar» queda atada al hijo que lo originó: así un aviso del hijo A no confirma al hijo B. Un `llegoEn` viejo no provoca el parpadeo «sale y desaparece».
 
 **"¿Cómo se vinculan padre y conductor?"**
 El conductor genera un código de 6 caracteres (`hijos_service.dart:259`) y lo comparte como QR (`driver_qr_screen.dart`) o a mano. El padre lo escribe o lo escanea (`child_form_screen.dart:88`), se resuelve con `resolverCodigo` (`hijos_service.dart:118`) y el hijo queda con `busPlate`/`driverUid`. Las reglas exigen que el `busPlate` venga con un código activo que apunte a esa placa (`firestore.rules:122`).

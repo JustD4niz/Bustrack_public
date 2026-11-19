@@ -188,8 +188,8 @@ solicitud vuelve a la cola de pendientes.
 
 ### 4.2 Código del bus (QR)
 
-En la parte superior del panel hay un botón de QR. Ábrelo para ver el **código
-del bus**:
+Abre la pestaña **Estudiantes** y toca **Compartir mi código** para ver el
+**código del bus**:
 
 - **Copiar código**: solo el código.
 - **Copiar mensaje para WhatsApp**: un texto listo para enviar al padre.
@@ -204,7 +204,7 @@ El padre puede escribir el código o escanear el QR desde **Mis hijos**.
 | --- | --- |
 | **Ruta** | Mapa en vivo y control del viaje. Abre por defecto. |
 | **Recorrido** | El itinerario que también ve el padre. |
-| **Estudiantes** | Los hijos vinculados a tu bus y el botón para llamar al padre. |
+| **Estudiantes** | Los hijos vinculados a tu bus, el botón para llamar al padre y **Compartir mi código** (QR). |
 | **Mi Perfil** | Tus datos, cambio de contraseña, "Acerca de" y cerrar sesión. |
 
 ### 4.4 Iniciar la ruta

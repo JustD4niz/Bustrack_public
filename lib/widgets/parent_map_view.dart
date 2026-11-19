@@ -140,6 +140,11 @@ class _ParentMapViewState extends State<ParentMapView> {
   /// Para no repetir el aviso de llegada mientras el bus siga en el paradero.
   bool _llegoAvisado = false;
 
+  /// Generación del SnackBar de llegada. Al cambiar de hijo se compara en el
+  /// post-frame: si mientras tanto se mostró un aviso nuevo, ese ya retiró el
+  /// anterior y no debe borrarse a sí mismo.
+  int _generacionAviso = 0;
+
   /// Refresca la cuenta regresiva de 10 s en el panel del padre.
   Timer? _tick;
 
@@ -186,6 +191,23 @@ class _ParentMapViewState extends State<ParentMapView> {
     final bool cambioPlaca = anterior.placa != widget.placa;
     final bool cambioHijo = anterior.studentId != widget.studentId;
     if (!cambioPlaca && !cambioHijo) return;
+
+    // El SnackBar vive en el ScaffoldMessenger, no en este State: sobreviviría
+    // al cambio con el nombre del hijo anterior y su acción "Confirmar"
+    // seguiría apuntando al `widget.studentId` nuevo. Se retira en post-frame
+    // porque `didUpdateWidget` corre durante el build y limpiar SnackBars ahí
+    // puede marcar el ScaffoldMessenger como sucio a mitad del rebuild.
+    // La generación evita borrar un aviso del hijo nuevo: el replay de
+    // `CanalCompartido` puede disparar `_avisarLlegada` antes del post-frame, y
+    // ese aviso ya llamó a `clearSnackBars()` por su cuenta.
+    final int generacionAlCambiar = _generacionAviso;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (generacionAlCambiar > 0 &&
+          _generacionAviso == generacionAlCambiar) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+      }
+    });
 
     if (cambioPlaca) {
       _subBus?.cancel();
@@ -443,7 +465,14 @@ class _ParentMapViewState extends State<ParentMapView> {
 
     if (llegue && !_llegoAvisado) {
       _llegoAvisado = true;
-      _avisarLlegada();
+      // Un `llegoEn` viejo llega por el replay al cambiar de hijo. Mostrar el
+      // SnackBar y borrarlo enseguida (_quizasAutoConfirmar llama a
+      // clearSnackBars) es el parpadeo que se veía al cambiar de hijo. Solo se
+      // avisa si la llegada ocurrió dentro de la ventana de confirmación.
+      final int segundos = miLlegoEn == null
+          ? 0
+          : DateTime.now().difference(miLlegoEn!).inSeconds;
+      if (segundos < _kSegundosAviso) _avisarLlegada();
       // Si el aviso ya llegó viejo (el padre abrió la app tarde), se confirma
       // de una vez en lugar de esperar otro tick.
       _quizasAutoConfirmar();
@@ -627,6 +656,11 @@ class _ParentMapViewState extends State<ParentMapView> {
   /// por confirmado sola y el conductor continúa.
   void _avisarLlegada() {
     if (!mounted) return;
+    // Se captura el hijo que originó el aviso. `onPressed: _confirmarLlegada`
+    // era un tear-off: si el padre cambiaba de hijo antes de tocar, confirmaba
+    // al nuevo con el aviso del anterior.
+    final String idAviso = widget.studentId;
+    _generacionAviso++;
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -635,7 +669,7 @@ class _ParentMapViewState extends State<ParentMapView> {
         action: SnackBarAction(
           label: 'Confirmar',
           textColor: Colors.white,
-          onPressed: _confirmarLlegada,
+          onPressed: () => _confirmarLlegada(idAviso),
         ),
         content: Text(
           '¡El bus llegó a tu paradero!'
@@ -661,9 +695,13 @@ class _ParentMapViewState extends State<ParentMapView> {
 
   /// Confirma que el padre vio el aviso de llegada. Se guarda en
   /// `recogida/{studentId}.avisoVistoEn` para que el conductor lo detecte.
-  Future<void> _confirmarLlegada() async {
+  Future<void> _confirmarLlegada([String? idAviso]) async {
     if (!mounted) return;
+    // Defensa en profundidad: aunque quede una acción colgada, nunca se escribe
+    // el visto del hijo que ahora mismo no está seleccionado.
+    if (idAviso != null && idAviso != widget.studentId) return;
     ScaffoldMessenger.of(context).clearSnackBars();
+    _generacionAviso = 0;
     setState(() => _miVistoEn = DateTime.now());
     try {
       await FirebaseFirestore.instance
@@ -823,50 +861,58 @@ class _ParentMapViewState extends State<ParentMapView> {
       );
     }
 
+    // El panel de recogida NO va encima del mapa: si lo está, tapa la parte
+    // baja del trayecto y `animateCamera` centra el bus "detrás" de la tarjeta.
+    // Al ser una sección hermana, el mapa tiene su propia área visible y el
+    // centrado cae donde el padre ve el marcador. El botón de centrar ya no
+    // necesita un `bottom` a ojo calculado para esquivar la tarjeta.
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
-        child: Stack(
+        child: Column(
           children: [
-            _buildMapa(),
-            _buildChipSenal(),
-            if (_calculando)
-              const Positioned(
-                top: 10,
-                right: 10,
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            Positioned(
-              right: 10,
-              bottom: 168,
-              child: FloatingActionButton.small(
-                heroTag: 'seguir_bus_padre',
-                backgroundColor:
-                    _siguiendo ? AppColors.primary : AppColors.surface,
-                foregroundColor: AppColors.ink,
-                onPressed: () {
-                  setState(() {
-                    _siguiendo = true;
-                    _ultimaPosicionCentrada = _posicionBus();
-                  });
-                  _centrarBus();
-                },
-                child: Icon(
-                  _siguiendo ? Icons.my_location : Icons.location_disabled,
-                ),
+            Expanded(
+              child: Stack(
+                children: [
+                  _buildMapa(),
+                  _buildChipSenal(),
+                  if (_calculando)
+                    const Positioned(
+                      top: 10,
+                      right: 10,
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  Positioned(
+                    right: 10,
+                    bottom: 12,
+                    child: FloatingActionButton.small(
+                      heroTag: 'seguir_bus_padre',
+                      tooltip:
+                          _siguiendo ? 'Siguiendo al bus' : 'Centrar el bus',
+                      backgroundColor:
+                          _siguiendo ? AppColors.primary : AppColors.surface,
+                      foregroundColor: AppColors.ink,
+                      onPressed: () {
+                        setState(() {
+                          _siguiendo = true;
+                          _ultimaPosicionCentrada = _posicionBus();
+                        });
+                        _centrarBus();
+                      },
+                      child: Icon(
+                        _siguiendo ? Icons.my_location : Icons.location_disabled,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: _buildPanelInferior(),
-            ),
+            _buildPanelInferior(),
           ],
         ),
       ),

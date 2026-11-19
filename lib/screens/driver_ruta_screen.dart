@@ -1192,10 +1192,10 @@ class _PantallaRutaConductorState extends State<PantallaRutaConductor> {
     );
   }
 
-  /// Encabezado del panel. El QR ya no vive aquí: se abre desde "Mi Perfil"
-  /// (opción "Código del bus") y desde el estado vacío de "Estudiantes", que es
-  /// donde el conductor lo necesita. Un icono suelto en la esquina no decía que
-  /// fuera tocable.
+  /// Encabezado del panel. El QR ya no vive aquí: se abre desde "Estudiantes",
+  /// tanto con la lista vacía como con niños ya vinculados, que es donde el
+  /// conductor lo necesita. Un icono suelto en la esquina no decía que fuera
+  /// tocable.
   Widget _buildEncabezado() {
     return BusHeader(
       title: _nombreConductor.isEmpty
@@ -1244,8 +1244,9 @@ class _PantallaRutaConductorState extends State<PantallaRutaConductor> {
   }
 
   /// Pestaña "Estudiantes": quiénes suben a este bus, con el botón para llamar
-  /// al padre. Deliberadamente **no** muestra el estado de recogida: eso se
-  /// maneja en la pestaña "Ruta" con "Ya recogí".
+  /// al padre y para compartir el código/QR de vinculación. Deliberadamente
+  /// **no** muestra el estado de recogida: eso se maneja en la pestaña "Ruta"
+  /// con "Ya recogí".
   Widget _buildPestanaEstudiantes() {
     final estudiantes = _estudiantesDelBus;
     final sinPunto = estudiantes.where((e) => !e.tienePunto).length;
@@ -1300,6 +1301,15 @@ class _PantallaRutaConductorState extends State<PantallaRutaConductor> {
                       : '${estudiantes.length} estudiantes en tu bus',
                   icon: Icons.family_restroom_rounded,
                   children: [
+                    // El código está aquí y no en "Mi Perfil": es en esta
+                    // pestaña donde el conductor echa de menos a un niño y
+                    // necesita compartirlo. Así funciona con lista vacía y con
+                    // estudiantes ya vinculados.
+                    BusPrimaryButton(
+                      label: 'Compartir mi código',
+                      icon: Icons.qr_code_2_rounded,
+                      onPressed: _abrirCodigoBus,
+                    ),
                     if (sinPunto > 0)
                       BusInfoBox(
                         icon: Icons.location_off_rounded,
@@ -1440,12 +1450,6 @@ class _PantallaRutaConductorState extends State<PantallaRutaConductor> {
                     title: 'Mis datos',
                     subtitle: 'Tu cuenta y los datos del bus',
                     onTap: _abrirMisDatos,
-                  ),
-                  BusOpcion(
-                    icon: Icons.qr_code_2_rounded,
-                    title: 'Código del bus',
-                    subtitle: 'Compártelo para que los padres se vinculen',
-                    onTap: _abrirCodigoBus,
                   ),
                   BusOpcion(
                     icon: Icons.lock_outline_rounded,

@@ -46,8 +46,8 @@ Al abrir la app por primera vez verás la pantalla de bienvenida con dos botones
 1. En la bienvenida toca **Registrarse**.
 2. Escribe correo y contraseña, o toca **Continuar con Google**.
 3. Elige el tipo de cuenta:
-   - **Padre de familia** — para seguir a un estudiante.
-   - **Conductor** — para manejar un bus escolar.
+   - **Soy Padre / Representante** — para seguir a un estudiante.
+   - **Soy Conductor** — para manejar un bus escolar.
 4. Completa el formulario que corresponda (ver las guías más abajo).
 
 ### Iniciar sesión
@@ -324,15 +324,20 @@ punto.
 
 ### El mapa muestra una línea recta en vez del camino
 
-La app calcula el camino con un servicio público gratuito. Si falla o no hay
-internet, dibuja una línea recta entre los puntos; la posición del bus sigue
-siendo real. Vuelve a intentarlo cuando tengas conexión.
+La app calcula el camino con un servicio público gratuito. En el mapa del
+**conductor**, si falla o no hay internet, dibuja una línea recta como guía; la
+posición del bus sigue siendo real. En el mapa del **padre** se conserva la
+última ruta calculada y, si nunca hubo una, no se dibuja ninguna línea hasta
+recuperar la conexión.
 
 ### No recibo avisos cuando el bus está cerca
 
-Esta versión **todavía no envía notificaciones**. Debes abrir la app y mirar la
-pestaña **Ruta** o **Recorrido**. Las notificaciones quedaron para una versión
-posterior.
+Esta versión **todavía no envía notificaciones automáticas** (push) cuando el
+bus está cerca. Sí ves el estado dentro de la app: cuando el conductor pulsa
+**Ya recogí**, el panel muestra que tu hijo ya fue recogido. En datos antiguos
+que aún traen un aviso de llegada puede aparecer además «¡El bus llegó a tu
+paradero!» con un botón **Confirmar**. Las notificaciones push quedaron para una
+versión posterior.
 
 ### El escáner de QR se queda en negro
 

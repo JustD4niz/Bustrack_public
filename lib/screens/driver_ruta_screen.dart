@@ -156,7 +156,7 @@ List<EstudianteBus> fusionarEstudiantes({
 ///
 /// El recorrido ya no se arma escribiendo paradas: el conductor **solo elige el
 /// colegio** (destino final) tocando el mapa, y las paradas son los puntos de
-/// recogida que cada padre marcó en `recogida/{uid}`. El conductor ve todos los
+/// recogida que cada padre marcó en `recogida/{studentId}`. El conductor ve todos los
 /// de su bus y la app dibuja el camino con OSRM **tramo por tramo**: hasta la
 /// recogida pendiente más cercana y, cuando ya recogió a todos, hasta el
 /// colegio. Al llegar a un punto pulsa "Ya recogí", que cierra esa parada
@@ -165,7 +165,7 @@ List<EstudianteBus> fusionarEstudiantes({
 ///
 /// Escribe en dos sitios, con responsabilidades distintas:
 ///
-/// - `rutas/{uid}` — `destino` (colegio) y `estadoParadas` (uids ya atendidos).
+/// - `rutas/{uid}` - `destino` (colegio) y `estadoParadas` (ids de estudiantes atendidos).
 /// - `buses/{placa}` — el estado del viaje, solo al pulsar "Iniciar Ruta".
 class PantallaRutaConductor extends StatefulWidget {
   const PantallaRutaConductor({super.key});

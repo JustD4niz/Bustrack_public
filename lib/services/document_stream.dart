@@ -49,9 +49,10 @@ class StreamsDeDocumento {
           .putIfAbsent(clave, () => CanalCompartido<QuerySnapshot>(crear))
           .stream;
 
-  /// Cierra y vuelve a abrir los streams que el usuario abrió y ya no necesita
-  /// (por ejemplo al quitar la placa de su perfil). Sin esto, el listener sigue
-  /// escuchando documentos que la pantalla ya no muestra.
+  /// Cierra un canal y suelta el listener de Firestore cuando una pantalla deja
+  /// de necesitarlo. Sin esto, el listener sigue escuchando documentos que ya no
+  /// se muestran. Hoy ninguna pantalla lo llama: se ofrece para el caso en que
+  /// una futura pantalla cambie de documento en vivo.
   void olvidar(String ruta) {
     _porRuta.remove(ruta)?.descartar();
   }

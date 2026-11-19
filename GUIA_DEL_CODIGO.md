@@ -54,7 +54,7 @@ Convenciones:
 
 **Por qué el `home` es `PantallaDeArranque` y no el login:** la sesión de Firebase se restaura de forma asíncrona. Si el `home` fuera el login, un usuario con sesión vería el formulario un instante antes de entrar a su panel, y eso se reportó como "la app me saca de la cuenta". El arranque muestra "Restaurando tu sesión…" mientras resuelve.
 
-**Sobre `AppColors`:** está documentada como paleta única, pero no se aplica en todas partes. `main.dart` mismo usa `0xFFFFC107` hardcodeado en el `ThemeData`, y pantallas como el registro usan `Color(0xFF0D47A1)` / `Colors.blueAccent`. No es un bug: es deuda visual conocida.
+**Sobre `AppColors`:** está documentada como paleta única y `_buildTheme()` la aplica (amarillo `#FDB913`, crema, negro). Quedan colores hardcodeados en puntos concretos (`session_router.dart`, `bus_marker.dart`, `google_button.dart`), no en el `ThemeData`. Para código nuevo, referencia `AppColors`.
 
 ---
 
@@ -310,7 +310,7 @@ Es la pantalla a la que cae el conductor no aprobado, tanto al iniciar sesión c
 
 ## 6. Panel del conductor
 
-### `lib/screens/driver_ruta_screen.dart` (1939 líneas)
+### `lib/screens/driver_ruta_screen.dart` (1942 líneas)
 
 | Línea | Qué hace |
 |---|---|
@@ -535,7 +535,7 @@ El padre pasa `studentId` para marcar "(tu punto)"; el conductor lo deja en `nul
 | `:229` | `_buildLista(...)`. |
 | `:307` | `_buildFichaConductor(...)`. |
 | `:416` | `_mostrarDetalle(...)`: hoja de detalle. |
-| `:505` | `_HijosDelPadre`: carga bajo demanda los hijos de un padre (`estudiantes` + legado). |
+| `:1125` | `_HijosDelPadre`: carga bajo demanda los hijos de un padre (`estudiantes` + legado). |
 | `:664` | `_buildBotonEliminar(...)`. |
 | `:688` | `_confirmarYEliminar(...)`. |
 | `:743` | `_pedirMotivoRechazo(...)`: "Rechazar" **pide un motivo**. |
@@ -559,7 +559,7 @@ El padre pasa `studentId` para marcar "(tu punto)"; el conductor lo deja en `nul
 | `recogida/{studentId}` | `busPlate`, `driverUid`, `parentUid`, `studentId`, `lat`, `lng`, `childName`, `parentName`, `parentPhone`, `avisoVistoEn?`, `updatedAt` | el padre dueño |
 | `solicitudes/{uid}/adjuntos/{slug}` | `name`, `isPdf`, `size`, `uploadedAt`, `data` (**`Blob`**) | el conductor |
 | `buses/{placa}` (id = placa) | `placa`, `driverUid`, `conductor`, `estadoRuta`, `enMovimiento`, `paradaActual`, `rutaIniciada`, `paradasPublicas` | el conductor |
-| `rutas/{driverUid}` | `destino`, `paradas`, `estadoParadas`, `iniciada`, `finalizada` | el conductor |
+| `rutas/{driverUid}` (doc) | `destino` (`{lat, lng, nombre}`), `estadoParadas` (`{studentId: {llegoEn, subioEn}}`) | el conductor |
 | `rutas/{driverUid}/historial/{registro}` | `destino`, `paradas`, `finalizada` | el conductor |
 
 **Detalles que suelen preguntar:**
@@ -570,7 +570,7 @@ El padre pasa `studentId` para marcar "(tu punto)"; el conductor lo deja en `nul
 - `buses/{placa}.driverUid` **no se borra al finalizar**: solo se limpian `lat`/`lng`, la velocidad y `paradasPublicas`, para que el padre siga sabiendo de quién es el bus.
 - `rutas/{driverUid}` va por **uid del conductor**, no por placa: un conductor con dos placas tiene dos rutas.
 - `rutas` y su `historial` no se heredan: las reglas tienen un bloque aparte para `historial`.
-- `hora` **no se escribe al añadir una parada**: la pone el conductor al reportar llegada. Todos los lectores toleran que falte.
+- El doc principal de `rutas/{driverUid}` ya **no lleva una lista `paradas` escrita a mano**: solo `destino` y `estadoParadas`. `paradas` con `hora` vive en el historial (`rutas/{uid}/historial`), que se escribe al cerrar la ruta; `llegoEn` en `estadoParadas` solo queda en documentos viejos (el flujo actual escribe `subioEn`).
 
 ---
 
@@ -660,7 +660,7 @@ El archivo está comentado bloque por bloque. Resumen con líneas:
 |---|---|---|
 | Bienvenida | `lib/screens/splash_screen.dart:14` | Logo, ilustración y los dos accesos. **No toca Firebase** (por eso el widget test puede renderizarla). |
 | Selector de mapa | `lib/screens/map_picker_screen.dart:18` | Centro inicial (`:85`), "Mi ubicación" (`:111`), atajos a ajustes (`:134`), `GoogleMap` en `:184`. |
-| Acerca de | `lib/screens/acerca_de_screen.dart:18` | Versión (`kBusTrackVersion` en `:14`), correo del admin copiable (`:155`), servicios usados. |
+| Acerca de | `lib/screens/acerca_de_screen.dart:18` | Versión (`kBusTrackVersion` en `:14`), correo del admin (`:105`) copiable (`_copiarCorreo`, `:155`), servicios usados. |
 | Mis datos (padre) | `lib/screens/parent_datos_screen.dart:18` | Datos del padre en vivo. |
 | Mis datos (conductor) | `lib/screens/driver_datos_screen.dart:17` | Datos del conductor en vivo. |
 | Editar padre | `lib/screens/parent_edit_screen.dart:19` | Nombre y teléfono; `_guardar` en `:51` y `sincronizarTelefonoPadre`. |
@@ -718,8 +718,8 @@ El archivo está comentado bloque por bloque. Resumen con líneas:
 | `:36` | `FOREGROUND_SERVICE_LOCATION` | Android 14+: seguir enviando posición con la pantalla bloqueada. |
 | `:43` | `POST_NOTIFICATIONS` | Android 13+: sin la notificación del servicio, algunos fabricantes matan el proceso y el bus parece "congelado". |
 | `:45` | `READ_EXTERNAL_STORAGE` con `maxSdkVersion="32"` | Solo teléfonos viejos; sin el tope, Play lo marca como over-request. |
-| `:76` | `com.google.android.geo.API_KEY` con el valor `${mapsApiKey}`. La clave real la inyecta Gradle desde `android/local.properties` (`MAPS_API_KEY`), que no se versiona. Si se restringe en Google Cloud, debe incluir el paquete y la SHA-1. |
-| `:90` | `<queries>` `PROCESS_TEXT` y `DIAL` (`tel:`) | Android 11+ exige declarar el esquema para abrir el marcador. |
+| `:77` | `com.google.android.geo.API_KEY` con el valor `${mapsApiKey}` (`:78`-`:79`). La clave real la inyecta Gradle desde `android/local.properties` (`MAPS_API_KEY`), que no se versiona. Si se restringe en Google Cloud, debe incluir el paquete y la SHA-1. |
+| `:91` | `<queries>` con `PROCESS_TEXT` (`:93`) y `DIAL` (`tel:`, `:99`) | Android 11+ exige declarar el esquema para abrir el marcador. |
 
 **Un permiso que no está en el manifiesto no se puede conceder.** `Permission.X.request()` devuelve `denied` sin mostrar diálogo y el código parece roto sin razón visible.
 
@@ -758,7 +758,7 @@ El archivo está comentado bloque por bloque. Resumen con líneas:
 | `:28` | `file_picker`. |
 | `:30` | `google_fonts`. |
 | `:32` | `image` (reducción de adjuntos en isolate). |
-| — | `qr_flutter`, `mobile_scanner`, `url_launcher`, `shared_preferences`, `http`, `intl` y los assets declarados. |
+| — | `qr_flutter`, `mobile_scanner`, `url_launcher`, `shared_preferences`, `http` y los assets declarados. |
 
 **La versión de la app está en dos sitios que deben coincidir a ojo:** `pubspec.yaml:6` (`1.0.0+1`) y `lib/screens/acerca_de_screen.dart:14` (`kBusTrackVersion = '1.0.0'`). Es una constante local, sin `package_info_plus`.
 
@@ -774,7 +774,7 @@ Nada importa esto. No asumas que se renderiza ni lo edites esperando un efecto v
 - `lib/widgets/bus_track_bottom_nav_bar.dart` — reemplazado por `bus_nav_bar.dart`.
 - `lib/widgets/action_button.dart` (`ActionButton`) y `lib/settings_screen.dart`.
 
-**Assets vacíos:** las carpetas `assets/audios`, `assets/jsons`, `assets/pdfs`, `assets/rive_animations` y `assets/videos` solo contienen un `.gitkeep`. Los assets reales son `assets/icon/app_icon.png` y `assets/images/Gemini_Generated_Image_cbhrgpcbhrgpcbhr.jpg` (fondo del login).
+**Assets vacíos:** las carpetas `assets/audios`, `assets/jsons`, `assets/pdfs`, `assets/rive_animations` y `assets/videos` solo contienen un `.gitkeep`. El único asset referenciado desde `lib/` es `assets/icon/app_icon.png` (lo usa `flutter_launcher_icons`). `assets/images/Gemini_Generated_Image_cbhrgpcbhrgpcbhr.jpg` sigue declarado en `pubspec.yaml` pero **ya no se usa** como fondo del login (candidato a quitar).
 
 ---
 
@@ -796,7 +796,7 @@ El conductor escribe `buses/{placa}` con el GPS (`bus_location_service.dart:58`)
 El conductor pulsa "Ya recogí" → `_marcarSubio` (`driver_ruta_screen.dart:871`) escribe `subioEn`. El padre lo lee de `rutas/{driverUid}.estadoParadas` (`parent_map_view.dart:406`) y actualiza `_subidos`.
 
 **"¿Cómo se avisa al padre de que el bus llegó?"**
-El conductor no escribe en `recogida` (no tiene permiso). Lo marca en `rutas/{uid}.estadoParadas` (`llegoEn`). El padre lo detecta (`parent_map_view.dart:406`), muestra el SnackBar (`:657`) y confirma escribiendo `recogida/{studentId}.avisoVistoEn` (`:698`). Si no responde en 10 s, se auto-confirma (`:685`). Al cambiar de hijo (`didUpdateWidget`, `:189`) se retira el aviso en post-frame —salvo que ya se mostrara uno nuevo, gracias a `_generacionAviso` (`:146`)— y la acción «Confirmar» queda atada al hijo que lo originó: así un aviso del hijo A no confirma al hijo B. Un `llegoEn` viejo no provoca el parpadeo «sale y desaparece».
+El conductor no escribe en `recogida` (no tiene permiso): confirma la recogida en `rutas/{uid}.estadoParadas` con `subioEn` (ver la pregunta anterior). El aviso «¡El bus llegó a tu paradero!» solo se dispara cuando un **documento viejo** trae `llegoEn` —el flujo actual ya no lo escribe—. El padre lo detecta (`parent_map_view.dart:406`), muestra el SnackBar (`:657`) y confirma escribiendo `recogida/{studentId}.avisoVistoEn` (`:698`). Si no responde en 10 s, se auto-confirma (`:685`). Al cambiar de hijo (`didUpdateWidget`, `:189`) se retira el aviso en post-frame —salvo que ya se mostrara uno nuevo, gracias a `_generacionAviso` (`:146`)— y la acción «Confirmar» queda atada al hijo que lo originó: así un aviso del hijo A no confirma al hijo B. Un `llegoEn` viejo no provoca el parpadeo «sale y desaparece».
 
 **"¿Cómo se vinculan padre y conductor?"**
 El conductor genera un código de 6 caracteres (`hijos_service.dart:259`) y lo comparte como QR (`driver_qr_screen.dart`) o a mano. El padre lo escribe o lo escanea (`child_form_screen.dart:88`), se resuelve con `resolverCodigo` (`hijos_service.dart:118`) y el hijo queda con `busPlate`/`driverUid`. Las reglas exigen que el `busPlate` venga con un código activo que apunte a esa placa (`firestore.rules:122`).
